@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scp-rest-svr
+  labels:
+    app: scp-rest-svr
+  namespace: default
+  annotations:
+    monitoring: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scp-rest-svr
+  template:
+    metadata:
+      labels:
+        app: scp-rest-svr
+    spec:
+     containers:
+     - name: scp-rest
+       image: registry.local/scp-rest-svr:latest
+       imagePullPolicy: Always
+       ports:
+       - containerPort: 8080
+     hostAliases:
+     - ip: "192.168.64.1"
+       hostnames:
+       - "registy.local"

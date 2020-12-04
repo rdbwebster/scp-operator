@@ -9,11 +9,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/rdbwebster/scp-rest-svr/kclient"
-	"github.com/rdbwebster/scp-rest-svr/model"
-	"github.com/rdbwebster/scp-rest-svr/stacktrace"
-
 	"github.com/gorilla/mux"
+	"github.com/rdbwebster/scp-operator/kclient"
+	"github.com/rdbwebster/scp-operator/model"
+	"github.com/rdbwebster/scp-operator/stacktrace"
 )
 
 func Index(w http.ResponseWriter, r *http.Request) {
@@ -88,9 +87,18 @@ func Login(w http.ResponseWriter, r *http.Request) {
 func GetClusters(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
+
+	if err := RepoGetClusters(); err != nil {
+		fmt.Printf("Error retrieving clusters %+v", err)
+	}
+
 	if err := json.NewEncoder(w).Encode(clusterInfos); err != nil {
 		log.Print(err)
 	}
+
+	//if err := json.NewEncoder(w).Encode(clusterInfos); err != nil {
+	//	log.Print(err)
+	//}
 }
 
 func GetCluster(w http.ResponseWriter, r *http.Request) {
@@ -189,16 +197,16 @@ func CreateCluster(w http.ResponseWriter, r *http.Request) {
 func DeleteCluster(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
-	id, err := strconv.Atoi(params["id"])
-	if err != nil {
-		st := stacktrace.New(err.Error())
-		log.Printf("%s\n", st)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	} else {
-		RepoDeleteCluster(id)
-		w.WriteHeader(http.StatusNoContent)
-	}
+	//id, err := strconv.Atoi(params["id"])
+	//if err != nil {
+	//	st := stacktrace.New(err.Error())
+	//	log.Printf("%s\n", st)
+	//	http.Error(w, err.Error(), http.StatusInternalServerError)
+	//	return
+	//} else {
+	RepoDeleteCluster(params["name"]) // TODO FIX
+	w.WriteHeader(http.StatusNoContent)
+	//}
 	return
 }
 
@@ -233,6 +241,10 @@ func UpdateCluster(w http.ResponseWriter, r *http.Request) {
 func GetServices(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
+
+	if err := RepoGetServices(); err != nil {
+		fmt.Printf("Error retrieving services %+v", err)
+	}
 	if err := json.NewEncoder(w).Encode(serviceInfos); err != nil {
 		log.Print(err)
 	}
@@ -339,9 +351,15 @@ func UpdateService(w http.ResponseWriter, r *http.Request) {
 func GetFactories(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
+
+	if err := RepoGetFactories(); err != nil {
+		fmt.Printf("Error retrieving clusters %+v", err)
+	}
+
 	if err := json.NewEncoder(w).Encode(factoryInfos); err != nil {
 		log.Print(err)
 	}
+
 }
 
 func GetFactory(w http.ResponseWriter, r *http.Request) {

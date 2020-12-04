@@ -1,0 +1,11 @@
+apiVersion: "webapp.my.domain/v1"
+kind: "ManagedOperator"
+metadata:
+  name: "managedoperator-sample"
+spec:
+  # Add fields here
+  name: "etcd"
+  deploymentname: "etcd-operator"
+  servicelabel: "app=etcd"
+  servicetype: "ClusterIP"
+  version: "quay.io/coreos/etcd-operator:v0.9.4"

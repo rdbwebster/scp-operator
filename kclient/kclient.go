@@ -16,8 +16,8 @@ import (
 	"os"
 	"path/filepath"
 
-	model "github.com/rdbwebster/scp-rest-svr/model"
-	"github.com/rdbwebster/scp-rest-svr/stacktrace"
+	model "github.com/rdbwebster/scp-operator/model"
+	"github.com/rdbwebster/scp-operator/stacktrace"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"

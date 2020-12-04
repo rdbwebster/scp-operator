@@ -1,0 +1,7 @@
+apiVersion: webapp.my.domain/v1
+kind: ScpCluster
+metadata:
+  name: scpcluster-sample
+spec:
+  # Add fields here
+  foo: bar

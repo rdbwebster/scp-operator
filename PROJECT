@@ -1,0 +1,10 @@
+domain: my.domain
+repo: github.com/rdbwebster/scp-operator
+resources:
+- group: webapp
+  kind: ScpCluster
+  version: v1
+- group: webapp
+  kind: ManagedOperator
+  version: v1
+version: "2"

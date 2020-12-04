@@ -1,10 +1,24 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"strconv"
 
-	"github.com/rdbwebster/scp-rest-svr/model"
+
+	clientV1alpha1 "github.com/rdbwebster/scp-operator/clientset/v1alpha1"
+	"github.com/rdbwebster/scp-operator/model"
+	"github.com/rdbwebster/scp-operator/stacktrace"
+	core "k8s.io/api/core/v1"
+	v1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 var clusterCurrentId int
@@ -12,11 +26,19 @@ var serviceCurrentId int
 var factoryCurrentId int
 var userCurrentId int = 60
 
+var scpclusterRes = schema.GroupVersionResource{Group: "webapp.my.domain", Version: "v1", Resource: "scpclusters"}
+
 // datastore
 var clusterInfos model.ClusterInfos
 var serviceInfos model.ServiceInfos
 var factoryInfos model.FactoryInfos
 var userInfos model.UserInfos
+
+var clusterClient *clientV1alpha1.ExampleV1Alpha1Client
+
+var dynamicClient dynamic.Interface
+var clientset *kubernetes.Clientset
+
 
 var pemData = `-----BEGIN CERTIFICATE-----
 MIIDADCCAeigAwIBAgIBAjANBgkqhkiG9w0BAQsFADAVMRMwEQYDVQQDEwptaW5p
@@ -87,6 +109,40 @@ Zjfex97rrbjORBea5+zZaWpTOsvjG/fqWLYJHQC3D3CMzEF0cNJ17g==
 
 // Give us some seed data
 func init() {
+
+	var config *rest.Config
+	var err error
+
+	if kubeconfig == "" {
+		log.Printf("using in-cluster configuration")
+		config, err = rest.InClusterConfig()
+	} else {
+		log.Printf("using configuration from '%s'", kubeconfig)
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+	}
+
+	if err != nil {
+		panic(err)
+	}
+
+	//	var client *clientV1alpha1.ExampleV1Alpha1Client
+	clusterClient, err = clientV1alpha1.NewForConfig(config)
+	if err != nil {
+		panic(err)
+	}
+
+	dynamicClient, err = dynamic.NewForConfig(config)
+	if err != nil {
+		panic(err)
+	}
+
+    /*	https://pkg.go.dev/k8s.io/client-go/kubernetes */
+	clientset, err = kubernetes.NewForConfig(config)
+	if err != nil {
+		panic(err)
+	}
+
+	// Static mock data
 	RepoCreateCluster(model.ClusterInfo{Name: "Cluster One", Url: "192.168.64.4:8443", Token: bearerToken, Cert: pemData, CertAuth: certAuth})
 	RepoCreateCluster(model.ClusterInfo{Name: "Cluster Two", Url: "192.168.0.42", Token: "", Cert: "", CertAuth: ""})
 	RepoCreateService(model.ServiceInfo{Name: "Postgres db1", Url: "192.168.0.42", Status: "Active"})
@@ -100,6 +156,7 @@ func init() {
 	user2 := model.UserInfo{FirstName: "Sandy", LastName: "Cheeks", Email: "admin@vmware.com", Password: "VMware1!", Id: ""}
 	user2.Roles[0] = "TENANT_ADMIN"
 	RepoCreateUser(user2)
+
 
 }
 
@@ -118,6 +175,27 @@ func RepoGetUserInfos() []model.UserInfo {
 //  Cluster Repos Methods
 //
 
+func RepoGetClusters() error {
+
+	// *v1.SCPclusterList
+	clusterList, err := clusterClient.SCPcluster("default").List(metav1.ListOptions{})
+	if err != nil {
+		st := stacktrace.New(err.Error())
+		log.Printf("%s\n", st)
+		fmt.Printf("Error retrieving clusters %+v \n", st)
+		return err
+	}
+
+	// replace the cached clusterInfos
+	clusterInfos = nil
+	for _, t := range clusterList.Items {
+		clusterInfos = append(clusterInfos,
+			model.ClusterInfo{Name: t.Spec.Name, Url: t.Spec.Url, Token: t.Spec.Token, Cert: t.Spec.Cert, CertAuth: t.Spec.CertAuth})
+	}
+	return nil
+
+}
+
 func RepoFindCluster(id int) model.ClusterInfo {
 	for _, t := range clusterInfos {
 		if t.Id == id {
@@ -129,11 +207,40 @@ func RepoFindCluster(id int) model.ClusterInfo {
 	return model.ClusterInfo{Id: 0}
 }
 
-//this is bad, I don't think it passes race condtions
 func RepoCreateCluster(t model.ClusterInfo) model.ClusterInfo {
-	clusterCurrentId++
-	t.Id = clusterCurrentId
-	clusterInfos = append(clusterInfos, t)
+
+	scpcluster := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "webapp.my.domain/v1",
+			"kind":       "SCPcluster",
+			"metadata": map[string]interface{}{
+				"name": t.Name,
+			},
+			"spec": map[string]interface{}{
+				"id":        0,
+				"name":      t.Name,
+				"url":       t.Url,
+				"token":     t.Token,
+				"cert":      t.Cert,
+				"auth":      t.CertAuth,
+				"connected": metav1.Now(),
+			},
+		},
+	}
+
+	fmt.Println("Creating cluster...")
+	result, err := dynamicClient.Resource(scpclusterRes).Namespace("default").Create(context.TODO(), scpcluster, metav1.CreateOptions{})
+	if err != nil {
+		st := stacktrace.New(err.Error())
+		log.Printf("%s\n", st)
+		fmt.Printf("Error creating clusters %+v \n", st)
+	} else {
+		fmt.Printf("Created cluster %q.\n", result.GetName())
+	}
+
+	//clusterCurrentId++
+	//t.Id = clusterCurrentId
+	//clusterInfos = append(clusterInfos, t)
 	return t
 }
 
@@ -152,19 +259,69 @@ func RepoUpdateCluster(ci model.ClusterInfo) model.ClusterInfo {
 	return ci
 }
 
-func RepoDeleteCluster(id int) error {
-	for i, t := range clusterInfos {
-		if t.Id == id {
-			clusterInfos = append(clusterInfos[:i], clusterInfos[i+1:]...)
-			return nil
-		}
+func RepoDeleteCluster(name string) error {
+
+	fmt.Printf("Deleting cluster... %s \n", name)
+	deletePolicy := metav1.DeletePropagationForeground
+	deleteOptions := metav1.DeleteOptions{
+		PropagationPolicy: &deletePolicy,
 	}
-	return fmt.Errorf("Could not find Cluster with id of %d to delete", id)
+	err := dynamicClient.Resource(scpclusterRes).Namespace("default").Delete(context.TODO(), name, deleteOptions)
+	if err != nil {
+		st := stacktrace.New(err.Error())
+		log.Printf("%s\n", st)
+		fmt.Printf("Error creating clusters %+v \n", st)
+	} else {
+		fmt.Printf("Deleted cluster %q.\n", name)
+	}
+
+	//	for i, t := range clusterInfos {
+	//		if t.Id == id {
+	//			clusterInfos = append(clusterInfos[:i], clusterInfos[i+1:]...)
+	//			return nil
+	//		}
+	//	}
+	//	return fmt.Errorf("Could not find Cluster with id of %d to delete", id)
+	return nil
 }
 
 //
 //  Service Repos Methods
 //
+
+func RepoGetServices() error {
+
+	// *v1.ManagedOperatorList
+	factoryList, err := clusterClient.ManagedOperator("default").List(metav1.ListOptions{})
+	fmt.Printf("Here also %+v", factoryList)
+	if err != nil {
+		st := stacktrace.New(err.Error())
+		log.Printf("%s\n", st)
+		fmt.Printf("Error retrieving factories %+v \n", st)
+		return err
+	}
+
+	// reset cached service infos
+	serviceInfos = nil
+
+    // get service for each managed operator using app label
+	for _, f := range factoryList.Items {
+		services, err := GetServicesByLabel("default", f.Spec.ServiceLabel)
+		if err != nil {
+			st := stacktrace.New(err.Error())
+			log.Printf("%s\n", st)
+			fmt.Printf("Error retrieving services %+v \n", st)
+			return err
+		 }
+		 for _, s := range services.Items {
+			serviceInfos = append(serviceInfos,
+						model.ServiceInfo{Name: s.Name, Url: "", Status: "Available"})
+
+		 }
+	}
+	return nil
+
+}
 
 func RepoFindService(id int) model.ServiceInfo {
 	for _, t := range serviceInfos {
@@ -209,6 +366,92 @@ func RepoDeleteService(id int) error {
 //
 //  Factory Repos Methods
 //
+
+func RepoGetFactories() error {
+
+	// *v1.ManagedOperatorList
+	factoryList, err := clusterClient.ManagedOperator("default").List(metav1.ListOptions{})
+	fmt.Printf("Here also %+v", factoryList)
+	if err != nil {
+		st := stacktrace.New(err.Error())
+		log.Printf("%s\n", st)
+		fmt.Printf("Error retrieving factories %+v \n", st)
+		return err
+	}
+
+	// replace the cached factoryInfos
+	factoryInfos = nil
+
+    // confirm deployments of each managed operator
+	for _, f := range factoryList.Items {
+		deployments, err := GetDeploymentsByField("default", "metadata.name=" + f.Spec.DeploymentName)
+		if err != nil {
+			st := stacktrace.New(err.Error())
+			log.Printf("%s\n", st)
+			fmt.Printf("Error retrieving factories %+v \n", st)
+			return err
+		 }
+		 if len(deployments.Items) > 0 {
+				factoryInfos = append(factoryInfos,
+					model.FactoryInfo{Name: f.Spec.Name, Url: "", Status: "Available"})
+		} else {
+			factoryInfos = append(factoryInfos,
+				model.FactoryInfo{Name: f.Spec.Name, Url: "", Status: "Not Available"})
+			}
+
+	}
+	return nil
+
+
+}
+
+
+func GetServicesByLabel(namespace string, labelSelector string) ( *core.ServiceList, error ) {
+
+
+
+		services, err := clientset.CoreV1().Services(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector})
+		if err != nil {
+				return  nil, err
+		}
+		for _, d := range services.Items {
+			fmt.Printf("Service  %s\n", d.Name)
+		}
+	
+		// https://pkg.go.dev/k8s.io/api/apps/v1
+		return  services, nil
+	}
+	
+
+func GetDeploymentsByLabel(namespace string, labelSelector string) ( *v1.DeploymentList, error ) {
+// "app=scp-spa"
+	deployments, err := clientset.AppsV1().Deployments(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector})
+	fmt.Printf("Type %T \n", deployments)
+	if err != nil {
+			return  nil, err
+	}
+	for _, d := range deployments.Items {
+		fmt.Printf(" * %s (%d replicas)\n", d.Name, *d.Spec.Replicas)
+	}
+
+	// https://pkg.go.dev/k8s.io/api/apps/v1
+	return  deployments, nil
+}
+
+func GetDeploymentsByField(namespace string, fieldSelector string) ( *v1.DeploymentList, error ) {
+	// "app=scp-spa"
+		deployments, err := clientset.AppsV1().Deployments(namespace).List(context.TODO(), metav1.ListOptions{FieldSelector: fieldSelector})
+		fmt.Printf("Type %T \n", deployments)
+		if err != nil {
+				return  nil, err
+		}
+		for _, d := range deployments.Items {
+			fmt.Printf(" * %s (%d replicas)\n", d.Name, *d.Spec.Replicas)
+		}
+	
+		// https://pkg.go.dev/k8s.io/api/apps/v1
+		return  deployments, nil
+	}
 
 func RepoFindFactory(id int) model.FactoryInfo {
 	for _, t := range factoryInfos {

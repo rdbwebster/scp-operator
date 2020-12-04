@@ -1,0 +1,24 @@
+# permissions for end users to edit managedoperators.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: managedoperator-editor-role
+rules:
+- apiGroups:
+  - webapp.my.domain
+  resources:
+  - managedoperators
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - webapp.my.domain
+  resources:
+  - managedoperators/status
+  verbs:
+  - get

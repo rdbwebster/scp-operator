@@ -1,0 +1,20 @@
+# permissions for end users to view scpclusters.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scpcluster-viewer-role
+rules:
+- apiGroups:
+  - webapp.my.domain
+  resources:
+  - scpclusters
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - webapp.my.domain
+  resources:
+  - scpclusters/status
+  verbs:
+  - get

@@ -29,7 +29,7 @@ func NewRouter() *mux.Router {
 	// Update
 	router.HandleFunc("/api/cluster/{id}", UpdateCluster).Methods("PUT")
 	// Delete
-	router.HandleFunc("/api/cluster/{id}", DeleteCluster).Methods("DELETE")
+	router.HandleFunc("/api/cluster/{name}", DeleteCluster).Methods("DELETE")
 
 	//
 	// Service

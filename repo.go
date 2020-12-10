@@ -12,6 +12,7 @@ import (
 	"github.com/rdbwebster/scp-operator/stacktrace"
 	core "k8s.io/api/core/v1"
 	v1 "k8s.io/api/apps/v1"
+	api "github.com/rdbwebster/scp-operator/api/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -31,7 +32,9 @@ var scpclusterRes = schema.GroupVersionResource{Group: "webapp.my.domain", Versi
 // datastore
 var clusterInfos model.ClusterInfos
 var serviceInfos model.ServiceInfos
+var groupInfos   model.GroupInfos
 var factoryInfos model.FactoryInfos
+
 var userInfos model.UserInfos
 
 var clusterClient *clientV1alpha1.ExampleV1Alpha1Client
@@ -144,19 +147,35 @@ func init() {
 
 	// Static mock data
 	RepoCreateCluster(model.ClusterInfo{Name: "Cluster One", Url: "192.168.64.4:8443", Token: bearerToken, Cert: pemData, CertAuth: certAuth})
-	RepoCreateCluster(model.ClusterInfo{Name: "Cluster Two", Url: "192.168.0.42", Token: "", Cert: "", CertAuth: ""})
-	RepoCreateService(model.ServiceInfo{Name: "Postgres db1", Url: "192.168.0.42", Status: "Active"})
-	RepoCreateService(model.ServiceInfo{Name: "Postgres db2", Url: "192.168.64.4:8443", Status: "Active"})
-	RepoCreateFactory(model.FactoryInfo{Name: "Tanzu Postgres Operator", Url: "http://192.168.0.42", Status: "Active"})
+//	RepoCreateCluster(model.ClusterInfo{Name: "Cluster Two", Url: "192.168.0.42", Token: "", Cert: "", CertAuth: ""})
+
+	RepoCreateService(model.ServiceInfo{Name: "Postgres db1", Url: "192.168.0.42", Clustername: "", Status: "Active"})
+	RepoCreateService(model.ServiceInfo{Name: "Postgres db2", Url: "192.168.64.4:8443", Clustername: "cluster1", Status: "Active"})
+
+//	RepoCreateFactory(model.FactoryInfo{Name: "etcd", Version: "1", Deploymentname: "etcd", Clustername: "LOCAL"})
+
+	//var members1 = []string {""} 
+	//var members2 = []string {""} 
+	//var members3 = []string {""} 
+	//RepoCreateGroup(modelGroupInfo{Name: "platform_operators", Member: members1 })
+	//RepoCreateGroup(modelGroupInfo{Name: "service_operators", Member: members2 })
+	//RepoCreateGroup(modelGroupInfo{Name: "developers", Member: members3 })
 
 	user1 := model.UserInfo{FirstName: "Patrick", LastName: "Star", Email: "developer@vmware.com", Password: "VMware1!", Id: ""}
-	user1.Roles[0] = "TENANT_USER"
+	user1.Roles[0] = "DEVELOPER"
 	RepoCreateUser(user1)
 
 	user2 := model.UserInfo{FirstName: "Sandy", LastName: "Cheeks", Email: "admin@vmware.com", Password: "VMware1!", Id: ""}
-	user2.Roles[0] = "TENANT_ADMIN"
+	user2.Roles[0] = "ADMINISTRATOR"
 	RepoCreateUser(user2)
 
+	user3 := model.UserInfo{FirstName: "Eugene", LastName: "Crabs", Email: "platformop@vmware.com", Password: "VMware1!", Id: ""}
+	user3.Roles[0] = "PLATFORM_OPERATOR"
+	RepoCreateUser(user3)
+
+	user4 := model.UserInfo{FirstName: "Squidward", LastName: "Tentacles", Email: "serviceop@vmware.com", Password: "VMware1!", Id: ""}
+	user4.Roles[0] = "SERVICE_OPERATOR"
+	RepoCreateUser(user4)
 
 }
 
@@ -314,13 +333,25 @@ func RepoGetServices() error {
 			return err
 		 }
 		 for _, s := range services.Items {
-			serviceInfos = append(serviceInfos,
-						model.ServiceInfo{Name: s.Name, Url: "", Status: "Available"})
+			 if !contains(serviceInfos, s.Name) {
+				serviceInfos = append(serviceInfos,
+							model.ServiceInfo{Name: s.Name, Url: "", Clustername: "LOCAL", Status: "Available"})
+			}
 
 		 }
 	}
 	return nil
 
+}
+
+func contains(s []model.ServiceInfo, name string) bool {
+	for _, v := range s {
+		if v.Name == name {
+			return true
+		}
+	}
+
+	return false
 }
 
 func RepoFindService(id int) model.ServiceInfo {
@@ -379,25 +410,23 @@ func RepoGetFactories() error {
 		return err
 	}
 
-	// replace the cached factoryInfos
+	// replace the cached 
 	factoryInfos = nil
 
-    // confirm deployments of each managed operator
+    // add factory to available list only if it has a deployment 
 	for _, f := range factoryList.Items {
-		deployments, err := GetDeploymentsByField("default", "metadata.name=" + f.Spec.DeploymentName)
-		if err != nil {
-			st := stacktrace.New(err.Error())
-			log.Printf("%s\n", st)
-			fmt.Printf("Error retrieving factories %+v \n", st)
-			return err
-		 }
-		 if len(deployments.Items) > 0 {
-				factoryInfos = append(factoryInfos,
-					model.FactoryInfo{Name: f.Spec.Name, Url: "", Status: "Available"})
-		} else {
-			factoryInfos = append(factoryInfos,
-				model.FactoryInfo{Name: f.Spec.Name, Url: "", Status: "Not Available"})
-			}
+	//	deployments, err := GetDeploymentsByField("default", "metadata.name=" + f.Name)
+	//	if err != nil {
+	//		st := stacktrace.New(err.Error())
+	//		log.Printf("%s\n", st)
+	//		fmt.Printf("Error retrieving factories %+v \n", st)
+	//		return err
+	//	 }
+	//	 if len(deployments.Items) > 0 {
+		//	factoryInfos = append(factoryInfos, f.Spec)
+		factoryInfos = append(factoryInfos,
+			model.FactoryInfo{Spec: f.Spec,	Clustername: "LOCAL"})
+	 //	} 
 
 	}
 	return nil
@@ -453,42 +482,43 @@ func GetDeploymentsByField(namespace string, fieldSelector string) ( *v1.Deploym
 		return  deployments, nil
 	}
 
-func RepoFindFactory(id int) model.FactoryInfo {
+func RepoFindFactory(name string) model.FactoryInfo {
 	for _, t := range factoryInfos {
-		if t.Id == id {
+		fmt.Printf("Compare '%s' and '%s' \n", t.Spec.Name, name)
+		if t.Spec.Name == name {
+			fmt.Printf("Found")
 			return t
 		}
 	}
-	// return empty Todo if not found
-	return model.FactoryInfo{Id: 0}
+	// return empty factory if not found
+	return model.FactoryInfo{Spec:  api.ManagedOperatorSpec{}, Clustername: ""}
 }
 
 //this is bad, I don't think it passes race condtions
 func RepoCreateFactory(t model.FactoryInfo) model.FactoryInfo {
-	factoryCurrentId++
-	t.Id = factoryCurrentId
+
 	factoryInfos = append(factoryInfos, t)
 	return t
 }
 
+
 func RepoUpdateFactory(ci model.FactoryInfo) model.FactoryInfo {
 
 	for _, t := range factoryInfos {
-		if t.Id == ci.Id {
-			t.Name = ci.Name
-			t.Url = ci.Url
-			t.Status = ci.Status
+		if t.Spec.Name == ci.Spec.Name {
+			t.Spec.Name = ci.Spec.Name
+			// TODO update more than name
 		}
 	}
 	return ci
 }
 
-func RepoDeleteFactory(id int) error {
+func RepoDeleteFactory(name string) error {
 	for i, t := range factoryInfos {
-		if t.Id == id {
+		if t.Spec.Name == name {
 			factoryInfos = append(factoryInfos[:i], factoryInfos[i+1:]...)
 			return nil
 		}
 	}
-	return fmt.Errorf("Could not find factory with id of %d to delete", id)
+	return fmt.Errorf("Could not find factory with name of %s to delete", name)
 }

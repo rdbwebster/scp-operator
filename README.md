@@ -108,13 +108,13 @@ curl --header "Content-Type: application/json" http://localhost:8080/api/factory
 
 // GET ONE
 
-curl --header "Content-Type: application/json" http://localhost:8080/api/factory/2
+curl --header "Content-Type: application/json" http://localhost:8080/api/factory/etcd
 
 // CREATE
 
 curl --header "Content-Type: application/json" \
   --request POST \
-  --data '{ "name":"New Factory", "url":"https://192.168.44.10", "status": "Active"}' \
+  --data '{ "name":"pgsql", "version":"1", "deploymentname": "etcd", "servicelabel": "app:etc"}' \
   http://localhost:8080/api/factory
 
 // UPDATE
@@ -194,6 +194,9 @@ https://book.kubebuilder.io/quick-start.html
 https://www.openshift.com/blog/kubernetes-operators-best-practices
 
 
+### Creating k8s users for minikube
+
+https://docs.bitnami.com/tutorials/configure-rbac-in-your-kubernetes-cluster/
 
 3)  Next I noticed the sample-operator builds crd types and also generates lister functions to get the custom crd.
 https://github.com/kubernetes/sample-controller
@@ -206,10 +209,16 @@ kubebuilder init --domain my.domain
 kubebuilder create api --group webapp --version v1 --kind Scpcluster
 kubebuilder create api --group webapp --version v1 --kind ManagedOperator
 
+// Make changes to go types, then generate deepcopy
+$ controller-gen object paths=./api/v1/
+
 // install CRDs into cluster
-make install
+ make install
 
 See config/samples for a uncustomized crd template to create an instance of the type
+then create a CR
+$ kubectl create -f config/samples/yourcr.yaml
+
 
 This calls controller-gen under the covers
 

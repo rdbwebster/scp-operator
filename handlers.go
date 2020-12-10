@@ -13,6 +13,7 @@ import (
 	"github.com/rdbwebster/scp-operator/kclient"
 	"github.com/rdbwebster/scp-operator/model"
 	"github.com/rdbwebster/scp-operator/stacktrace"
+//	api "github.com/rdbwebster/scp-operator/api/v1"
 )
 
 func Index(w http.ResponseWriter, r *http.Request) {
@@ -353,7 +354,7 @@ func GetFactories(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	if err := RepoGetFactories(); err != nil {
-		fmt.Printf("Error retrieving clusters %+v", err)
+		fmt.Printf("Error retrieving factories %+v", err)
 	}
 
 	if err := json.NewEncoder(w).Encode(factoryInfos); err != nil {
@@ -364,19 +365,12 @@ func GetFactories(w http.ResponseWriter, r *http.Request) {
 
 func GetFactory(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	var id int
-	var err error
-	if id, err = strconv.Atoi(vars["id"]); err != nil {
-		st := stacktrace.New(err.Error())
-		log.Printf("%s\n", st)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	factoryInfo := RepoFindFactory(id)
-	if factoryInfo.Id == 0 {
+
+	fact := RepoFindFactory(vars["name"])
+	if fact.Spec.Name != "" {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(factoryInfo); err != nil {
+		if err := json.NewEncoder(w).Encode(fact); err != nil {
 			log.Print(err)
 		}
 		return
@@ -392,7 +386,7 @@ func GetFactory(w http.ResponseWriter, r *http.Request) {
 }
 
 func CreateFactory(w http.ResponseWriter, r *http.Request) {
-	var factoryInfo model.FactoryInfo
+	var info model.FactoryInfo
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
 	if err != nil {
 		log.Print(err)
@@ -400,7 +394,7 @@ func CreateFactory(w http.ResponseWriter, r *http.Request) {
 	if err := r.Body.Close(); err != nil {
 		log.Print(err)
 	}
-	if err := json.Unmarshal(body, &factoryInfo); err != nil {
+	if err := json.Unmarshal(body, &info); err != nil {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusUnprocessableEntity) // unprocessable entity
 		if err := json.NewEncoder(w).Encode(err); err != nil {
@@ -408,7 +402,7 @@ func CreateFactory(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	t := RepoCreateFactory(factoryInfo)
+	t := RepoCreateFactory(info)
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusCreated)
 	if err := json.NewEncoder(w).Encode(t); err != nil {
@@ -419,21 +413,15 @@ func CreateFactory(w http.ResponseWriter, r *http.Request) {
 func DeleteFactory(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
-	id, err := strconv.Atoi(params["id"])
-	if err != nil {
-		st := stacktrace.New(err.Error())
-		log.Printf("%s\n", st)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	} else {
-		RepoDeleteFactory(id)
-		w.WriteHeader(http.StatusNoContent)
-	}
+
+	RepoDeleteFactory(params["name"])
+	w.WriteHeader(http.StatusNoContent)
+	
 	return
 }
 
 func UpdateFactory(w http.ResponseWriter, r *http.Request) {
-	var factoryInfo model.FactoryInfo
+	var info model.FactoryInfo
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
 	if err != nil {
 		log.Print(err)
@@ -441,17 +429,157 @@ func UpdateFactory(w http.ResponseWriter, r *http.Request) {
 	if err := r.Body.Close(); err != nil {
 		log.Print(err)
 	}
-	if err := json.Unmarshal(body, &factoryInfo); err != nil {
+	if err := json.Unmarshal(body, &info); err != nil {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(422) // unprocessable entity
 		if err := json.NewEncoder(w).Encode(err); err != nil {
 			log.Print(err)
 		}
 	}
-	t := RepoUpdateFactory(factoryInfo)
+	t := RepoUpdateFactory(info)
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(t); err != nil {
 		log.Print(err)
 	}
 }
+
+
+//
+// Group Handlers
+//
+
+/*
+
+func GetGroups(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+
+	if err := RepoGetGroups(); err != nil {
+		fmt.Printf("Error retrieving groups %+v", err)
+	}
+
+	if err := json.NewEncoder(w).Encode(groupInfos); err != nil {
+		log.Print(err)
+	}
+
+}
+
+func GetGroup(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	info := RepoFindGroup(vars["name"])
+	if info.Name != "" {
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(info); err != nil {
+			log.Print(err)
+		}
+		return
+	}
+
+	// If we didn't find it, 404
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusNotFound)
+	if err := json.NewEncoder(w).Encode(jsonErr{Code: http.StatusNotFound, Text: "Not Found"}); err != nil {
+		log.Print(err)
+	}
+
+}
+
+func CreateGroup(w http.ResponseWriter, r *http.Request) {
+	var info model.GroupInfo
+	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
+	if err != nil {
+		log.Print(err)
+	}
+	if err := r.Body.Close(); err != nil {
+		log.Print(err)
+	}
+	if err := json.Unmarshal(body, &info); err != nil {
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(http.StatusUnprocessableEntity) // unprocessable entity
+		if err := json.NewEncoder(w).Encode(err); err != nil {
+			log.Print(err)
+		}
+	}
+
+	t := RepoCreateGroup(info)
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(t); err != nil {
+		log.Print(err)
+	}
+}
+
+func AddGroupMember(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
+	if err != nil {
+		log.Print(err)
+	}
+	if err := r.Body.Close(); err != nil {
+		log.Print(err)
+	}
+	if err := json.Unmarshal(body, &info); err != nil {
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(http.StatusUnprocessableEntity) // unprocessable entity
+		if err := json.NewEncoder(w).Encode(err); err != nil {
+			log.Print(err)
+		}
+	}
+
+	grp := RepoFindGroup(vars["name"])
+	if grp.Name == "" {
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(http.StatusNotFound)
+		if err := json.NewEncoder(w).Encode(info); err != nil {
+			log.Print(err)
+		}
+		return
+	}
+
+	t := RepoAddGroupMember(grp, )
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(t); err != nil {
+		log.Print(err)
+	}
+}
+
+func DeleteGroup(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(r)
+
+	RepoDeleteGroup(params["name"])
+	w.WriteHeader(http.StatusNoContent)
+	
+	return
+}
+
+func UpdateGroup(w http.ResponseWriter, r *http.Request) {
+	var info api.ManagedOperatorSpec
+	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
+	if err != nil {
+		log.Print(err)
+	}
+	if err := r.Body.Close(); err != nil {
+		log.Print(err)
+	}
+	if err := json.Unmarshal(body, &info); err != nil {
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(422) // unprocessable entity
+		if err := json.NewEncoder(w).Encode(err); err != nil {
+			log.Print(err)
+		}
+	}
+	t := RepoUpdateGroup(info)
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(t); err != nil {
+		log.Print(err)
+	}
+}
+*/
+

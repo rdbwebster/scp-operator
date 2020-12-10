@@ -9,3 +9,21 @@ spec:
   servicelabel: "app=etcd"
   servicetype: "ClusterIP"
   version: "quay.io/coreos/etcd-operator:v0.9.4"
+  deploymentinputs:
+  - controlName: Name
+    controlType: text
+    valueType: text
+    placeholder: Service name
+    validators:
+      required: true
+      minlength: 5
+  - controlName: Replicas
+    placeholder: Number of Pods
+    valueType: text
+    controlType: text
+    validators:
+      required: true
+      minlength: 1
+      maxlength: 3
+
+

@@ -20,7 +20,7 @@ func NewRouter() *mux.Router {
 
 	// Connect
 	router.HandleFunc("/api/cluster/{id}/connect", ConnectCluster).Methods("POST")
-	// Create
+	// Create - add a peer
 	router.HandleFunc("/api/cluster", CreateCluster).Methods("POST")
 	// Read
 	router.HandleFunc("/api/cluster/{id}", GetCluster).Methods("GET")
@@ -53,13 +53,30 @@ func NewRouter() *mux.Router {
 	// Create
 	router.HandleFunc("/api/factory", CreateFactory).Methods("POST")
 	// Read
-	router.HandleFunc("/api/factory/{id}", GetFactory).Methods("GET")
+	router.HandleFunc("/api/factory/{name}", GetFactory).Methods("GET")
 	// Read-all
 	router.HandleFunc("/api/factory", GetFactories).Methods("GET")
 	// Update
-	router.HandleFunc("/api/factory/{id}", UpdateFactory).Methods("PUT")
+	router.HandleFunc("/api/factory/{name}", UpdateFactory).Methods("PUT")
 	// Delete
-	router.HandleFunc("/api/factory/{id}", DeleteFactory).Methods("DELETE")
+	router.HandleFunc("/api/factory/{name}", DeleteFactory).Methods("DELETE")
+
+	//
+	// Group
+	//
+
+	// Create
+//	router.HandleFunc("/api/group", CreateGroup).Methods("POST")
+	// Add Member
+//	router.HandleFunc("/api/group/{name}/member", AddGroupMember).Methods("POST")
+	// Read
+//	router.HandleFunc("/api/group/{name}", GetGroup).Methods("GET")
+	// Read-all
+//	router.HandleFunc("/api/group", GetGroup).Methods("GET")
+	// Update
+//	router.HandleFunc("/api/group/{name}", UpdateGroup).Methods("PUT")
+	// Delete
+//	router.HandleFunc("/api/group/{name}", DeleteGroup).Methods("DELETE")
 
 	return router
 }

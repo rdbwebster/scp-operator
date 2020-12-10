@@ -1,0 +1,58 @@
+apiVersion: "webapp.my.domain/v1"
+kind: "ManagedOperator"
+metadata:
+  name: "managedoperator-sample"
+spec:
+  # Add fields here
+  name: "etcd"
+  deploymentname: "etcd-operator"
+  servicelabel: "app=etcd"
+  servicetype: "ClusterIP"
+  version: "quay.io/coreos/etcd-operator:v0.9.4"
+  deploymentinputs:
+  - controlName: DB Name
+    controlType: text
+    valueType: text
+    placeholder: Enter DB name
+    validators:
+      required: true
+      minlength: 5
+  - controlName: DB Username
+    controlType: text
+    valueType: text
+    placeholder: Enter DB username
+    validators:
+    required: true
+    minlength: 5
+  - controlName: Memory
+    placeholder: Enter Memory
+    valueType: text
+    controlType: text
+    validators:
+      required: true
+      minlength: 7
+      maxlength: 10
+  - controlName: CPU
+    valueType: text
+    placeholder: Enter cpu
+    controlType: text
+    validators:
+      required: true
+  - controlName: Storage
+    placeholder: Select storage
+    controlType: select
+    options:
+      - optionName: 100 GB
+        value: 100GB
+      - optionName: 200 GB
+        value: 200GB
+    validators:
+      required: true
+  - controlName: High Availability
+    placeholder: High Availability
+    controlType: checkbox
+    options:
+      - optionName: Enable HA
+        value: haenabled
+    validators:
+      required: true

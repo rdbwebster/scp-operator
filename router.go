@@ -19,17 +19,17 @@ func NewRouter() *mux.Router {
 	//
 
 	// Connect
-	router.HandleFunc("/api/cluster/{id}/connect", ConnectCluster).Methods("POST")
-	// Create - add a peer
+	router.HandleFunc("/api/cluster/{clustername}/connect", ConnectCluster).Methods("POST")
+	// Create - add a cluster
 	router.HandleFunc("/api/cluster", CreateCluster).Methods("POST")
 	// Read
-	router.HandleFunc("/api/cluster/{id}", GetCluster).Methods("GET")
+	router.HandleFunc("/api/cluster/{clustername}", GetCluster).Methods("GET")
 	// Read-all
 	router.HandleFunc("/api/cluster", GetClusters).Methods("GET")
 	// Update
-	router.HandleFunc("/api/cluster/{id}", UpdateCluster).Methods("PUT")
+	router.HandleFunc("/api/cluster/{clustername}", UpdateCluster).Methods("PUT")
 	// Delete
-	router.HandleFunc("/api/cluster/{name}", DeleteCluster).Methods("DELETE")
+	router.HandleFunc("/api/cluster/{clustername}", DeleteCluster).Methods("DELETE")
 
 	//
 	// Service
@@ -66,17 +66,17 @@ func NewRouter() *mux.Router {
 	//
 
 	// Create
-//	router.HandleFunc("/api/group", CreateGroup).Methods("POST")
+	//	router.HandleFunc("/api/group", CreateGroup).Methods("POST")
 	// Add Member
-//	router.HandleFunc("/api/group/{name}/member", AddGroupMember).Methods("POST")
+	//	router.HandleFunc("/api/group/{name}/member", AddGroupMember).Methods("POST")
 	// Read
-//	router.HandleFunc("/api/group/{name}", GetGroup).Methods("GET")
+	//	router.HandleFunc("/api/group/{name}", GetGroup).Methods("GET")
 	// Read-all
-//	router.HandleFunc("/api/group", GetGroup).Methods("GET")
+	//	router.HandleFunc("/api/group", GetGroup).Methods("GET")
 	// Update
-//	router.HandleFunc("/api/group/{name}", UpdateGroup).Methods("PUT")
+	//	router.HandleFunc("/api/group/{name}", UpdateGroup).Methods("PUT")
 	// Delete
-//	router.HandleFunc("/api/group/{name}", DeleteGroup).Methods("DELETE")
+	//	router.HandleFunc("/api/group/{name}", DeleteGroup).Methods("DELETE")
 
 	return router
 }

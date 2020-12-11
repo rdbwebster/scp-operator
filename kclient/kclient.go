@@ -30,11 +30,11 @@ import (
 
 func ConnectToCluster(ci model.ClusterInfo) (int, error) {
 
-	config, err := clientcmd.BuildConfigFromFlags(ci.Url, "")
+	config, err := clientcmd.BuildConfigFromFlags(ci.Spec.Url, "")
 
-	config.CAData = []byte(ci.CertAuth)
-	config.CertData = []byte(ci.Cert)
-	config.KeyData = []byte(ci.Token)
+	config.CAData = []byte(ci.Spec.CertAuth)
+	config.CertData = []byte(ci.Spec.Cert)
+	config.KeyData = []byte(ci.Spec.Token)
 
 	// create the clientset
 

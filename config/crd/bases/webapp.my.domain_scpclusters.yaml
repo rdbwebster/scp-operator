@@ -38,23 +38,21 @@ spec:
               type: string
             certauth:
               type: string
-            connected:
-              format: date-time
-              type: string
-            id:
+            clustername:
               description: Foo is an example field of SCPcluster. Edit SCPcluster_types.go
                 to remove/update
-              format: int32
-              type: integer
-            name:
+              type: string
+            lastcontact:
+              format: date-time
+              type: string
+            namespace:
               type: string
             token:
               type: string
             url:
               type: string
           required:
-          - id
-          - name
+          - clustername
           type: object
         status:
           description: SCPclusterStatus defines the observed state of SCPcluster

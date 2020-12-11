@@ -1,4 +1,4 @@
-#### SCP POC Rest Service
+#### Data Services POC Rest Service
 
 This is a REST server that uses in memory data structures to server
 Clusters
@@ -9,7 +9,7 @@ for the Clarity POC UI
 
 
 
-## Running the example
+#### Running the example
 
 To run this example, from the root of this project:
 
@@ -44,14 +44,14 @@ curl --header "Content-Type: application/json" http://localhost:8080/api/cluster
 
 curl --header "Content-Type: application/json" \
   --request POST \
-  --data '{ "name":"New Cluster", "url":"https://192.168.44.10", "token": "", "cert": "", "certauth": "", "connected": "true"}' \
+  --data '{ "name":"New Cluster", "namespace": "default", "url":"https://192.168.44.10", "token": "", "cert": "", "certauth": "", "connected": "true"}' \
   http://localhost:8080/api/cluster
 
 // UPDATE
 
 curl --header "Content-Type: application/json" \
   --request PUT \
-  --data '{"id":3, "name":"New Cluster Three", "url":"https://192.168.44.10", "connected": "true"}' \
+  --data '{"id":3, "name":"New Cluster Three", "namespace": "default", "url":"https://192.168.44.10", "connected": "true"}' \
   http://localhost:8080/api/cluster
 
 // DELETE
@@ -63,7 +63,7 @@ curl --header "Content-Type: application/json" --request DELETE   http://localho
 curl --header "Content-Type: application/json" \
   --request POST \
   --data '' \
-  http://localhost:8080/api/cluster/1/connect
+  http://localhost:8080/api/cluster/cluster1/connect
 
 ```
 
@@ -160,7 +160,7 @@ Address: 10.98.114.9
 
 ### Dev evolution
 
-1) first option is to manually create a new CRD yaml file and add it using kubectl create.
+1) first option is to manually create a new CRD yaml file and add it using kubectl -f create.
    Then create instances of the new type.
    Then we can use the dynamic go client to read and write these types.
    We need to specify the fields in a map, there are no generated go types for the CRD type.
@@ -170,50 +170,51 @@ Address: 10.98.114.9
    in https://www.martin-helmich.de/en/blog/kubernetes-crd-client.html
 
 2) I tried using to generate go types to match the CRD in step one and my own clientset as per this tutorial
-https://www.martin-helmich.de/en/blog/kubernetes-crd-client.html
-it just uses controller-gen tool, which is part of the Kubebuilder framework:
-So this approach uses strong typing using generated go types and the static go-client
+   https://www.martin-helmich.de/en/blog/kubernetes-crd-client.html
+   it just uses controller-gen tool, which is part of the Kubebuilder framework:
+   So this approach uses strong typing using generated go types and the static go-client
 
-Add required annotations then run
+   Add required annotations then run
 
-$ controller-gen object paths=./api/v1/
+   $ controller-gen object paths=./api/v1/
 
-this adds deep copy methods for all types in v1 folder into zz_generated.deepcopy.go
-NOTE: these methods are for use with the static client.
-Then the article goes on to write a client-set for the new type to do CRUD opertions on it
+   this adds deep copy methods for all types in v1 folder into zz_generated.deepcopy.go
+   NOTE: these methods are for use with the static client.
+   Then the article goes on to write a client-set for the new type to do CRUD opertions on it
 
-A note about clients, creating your own client-set for static types is manually intensive.
-it works but is very painful compared to just using the client-go dynamic client.
-With this article you install the CRDS yourself and then write custom types.
-Kubebuilder and scp-operator will do all of these steps together
-you can select Y for Create Resource [y/n]  and N to generate controller (operator).
-See section 3
+   A note about clients, creating your own client-set for static types is manually intensive.
+   it works but is very painful compared to just using the client-go dynamic client.
+   With this article you install the CRDS yourself and then write custom types.
+   Kubebuilder and scp-operator will do all of these steps together
+   you can select Y for Create Resource [y/n]  and N to generate controller (operator).
+   See section 3
 
-See kubebuilder quick start
-https://book.kubebuilder.io/quick-start.html
-https://www.openshift.com/blog/kubernetes-operators-best-practices
+   See kubebuilder quick start
+   https://book.kubebuilder.io/quick-start.html
+   https://www.openshift.com/blog/kubernetes-operators-best-practices
 
 
-### Creating k8s users for minikube
 
-https://docs.bitnami.com/tutorials/configure-rbac-in-your-kubernetes-cluster/
 
-3)  Next I noticed the sample-operator builds crd types and also generates lister functions to get the custom crd.
-https://github.com/kubernetes/sample-controller
-https://itnext.io/building-an-operator-for-kubernetes-with-the-sample-controller-b4204be9ad56
-do this one with kubebuilder
-https://itnext.io/building-an-operator-for-kubernetes-with-kubebuilder-17cbd3f07761
-so rather than just trying to generate go types for my crd, I will do the sample-controller steps in this project
+3) Next I noticed the sample-operator builds crd types and also generates lister functions to get the custom crd.
+   https://github.com/kubernetes/sample-controller
+   https://itnext.io/building-an-operator-for-kubernetes-with-the-sample-controller-b4204be9ad56
+   did this kubebuilder example 
+   https://itnext.io/building-an-operator-for-kubernetes-with-kubebuilder-17cbd3f07761
+   so rather than just trying to generate go types for my crd, I will do the sample-controller steps in this project
 
-kubebuilder init --domain my.domain
-kubebuilder create api --group webapp --version v1 --kind Scpcluster
-kubebuilder create api --group webapp --version v1 --kind ManagedOperator
+   $ kubebuilder init --domain webapp.my.domain
+   $ kubebuilder create api --group webapp --version v1 --kind OperatorManager
+   $ kubebuilder create api --group webapp --version v1 --kind ManagedOperator
 
-// Make changes to go types, then generate deepcopy
-$ controller-gen object paths=./api/v1/
+   // Make additions to go types, then generate deepcopy
+   $ controller-gen object paths=./api/v1/
 
-// install CRDs into cluster
- make install
+   // Run make whenever changes are made to types in app/v1
+   $ make
+
+   // install CRDs into cluster
+   $  make install
 
 See config/samples for a uncustomized crd template to create an instance of the type
 then create a CR
@@ -222,6 +223,10 @@ $ kubectl create -f config/samples/yourcr.yaml
 
 This calls controller-gen under the covers
 
+# Add cert based clients to minikube
+kubebuilder create api --group webapp --version v1 --kind OperatorManager
+
+see ssl folder
 
 TODO
 List real operators - need new CRD ManagedOperator

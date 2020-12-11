@@ -6,9 +6,8 @@ import (
 
 // No longer used TODO remove
 type FactoryInfo struct {
-    Spec        api.ManagedOperatorSpec `json:"spec"` 
-	Clustername string `json:"clustername"`
+	Spec        api.ManagedOperatorSpec `json:"spec"`
+	Clustername string                  `json:"clustername"`
 }
 
 type FactoryInfos []FactoryInfo
-

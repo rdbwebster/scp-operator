@@ -13,7 +13,7 @@ import (
 	"github.com/rdbwebster/scp-operator/kclient"
 	"github.com/rdbwebster/scp-operator/model"
 	"github.com/rdbwebster/scp-operator/stacktrace"
-//	api "github.com/rdbwebster/scp-operator/api/v1"
+	//	api "github.com/rdbwebster/scp-operator/api/v1"
 )
 
 func Index(w http.ResponseWriter, r *http.Request) {
@@ -104,16 +104,9 @@ func GetClusters(w http.ResponseWriter, r *http.Request) {
 
 func GetCluster(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	var id int
-	var err error
-	if id, err = strconv.Atoi(vars["id"]); err != nil {
-		st := stacktrace.New(err.Error())
-		log.Printf("%s\n", st)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	clusterInfo := RepoFindCluster(id)
-	if clusterInfo.Id == 0 {
+
+	clusterInfo := RepoFindCluster(vars["clustername"])
+	if clusterInfo.Spec.Clustername == "" {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(clusterInfo); err != nil {
@@ -133,17 +126,11 @@ func GetCluster(w http.ResponseWriter, r *http.Request) {
 
 func ConnectCluster(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	var id int
 	var err error
 	var podCount int
-	if id, err = strconv.Atoi(vars["id"]); err != nil {
-		st := stacktrace.New(err.Error())
-		log.Printf("%s\n", st)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	clusterInfo := RepoFindCluster(id)
-	if clusterInfo.Id == 0 {
+
+	clusterInfo := RepoFindCluster(vars["clustername"])
+	if clusterInfo.Spec.Clustername == "" {
 		// If we didn't find it, 404
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusNotFound)
@@ -205,7 +192,7 @@ func DeleteCluster(w http.ResponseWriter, r *http.Request) {
 	//	http.Error(w, err.Error(), http.StatusInternalServerError)
 	//	return
 	//} else {
-	RepoDeleteCluster(params["name"]) // TODO FIX
+	RepoDeleteCluster(params["clustername"])
 	w.WriteHeader(http.StatusNoContent)
 	//}
 	return
@@ -416,7 +403,7 @@ func DeleteFactory(w http.ResponseWriter, r *http.Request) {
 
 	RepoDeleteFactory(params["name"])
 	w.WriteHeader(http.StatusNoContent)
-	
+
 	return
 }
 
@@ -443,7 +430,6 @@ func UpdateFactory(w http.ResponseWriter, r *http.Request) {
 		log.Print(err)
 	}
 }
-
 
 //
 // Group Handlers
@@ -554,7 +540,7 @@ func DeleteGroup(w http.ResponseWriter, r *http.Request) {
 
 	RepoDeleteGroup(params["name"])
 	w.WriteHeader(http.StatusNoContent)
-	
+
 	return
 }
 
@@ -582,4 +568,3 @@ func UpdateGroup(w http.ResponseWriter, r *http.Request) {
 	}
 }
 */
-

@@ -5,10 +5,10 @@ metadata:
 spec:
   # Add fields here
   name: "postgres"
-  deploymentname: "example-foo"
+  deploymentname: "Postgres"
   servicelabel: ""
   servicetype: "ClusterIP"
-  version: "quay.io/coreos/etcd-operator:v0.9.4"
+  version: "postgres-for-kubernetes-v1.0.0"
   deploymentinputs:
   - controlName: DB Name
     controlType: text

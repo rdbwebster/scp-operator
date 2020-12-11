@@ -31,13 +31,13 @@ type SCPclusterSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of SCPcluster. Edit SCPcluster_types.go to remove/update
-	Id        int32       `json:"id"`
-	Name      string      `json:"name"`
-	Url       string      `json:"url,omitempty"`
-	Token     string      `json:"token,omitempty"`
-	Cert      string      `json:"cert,omitempty"`
-	CertAuth  string      `json:"certauth,omitempty"`
-	Connected metav1.Time `json:"connected,omitempty"`
+	Clustername string      `json:"clustername"`
+	Namespace   string      `json:"namespace,omitempty"`
+	Url         string      `json:"url,omitempty"`
+	Token       string      `json:"token,omitempty"`
+	Cert        string      `json:"cert,omitempty"`
+	CertAuth    string      `json:"certauth,omitempty"`
+	Lastcontact metav1.Time `json:"lastcontact,omitempty"`
 }
 
 // SCPclusterStatus defines the observed state of SCPcluster

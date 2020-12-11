@@ -7,4 +7,7 @@ resources:
 - group: webapp
   kind: ManagedOperator
   version: v1
+- group: webapp
+  kind: OperatorManager
+  version: v1
 version: "2"

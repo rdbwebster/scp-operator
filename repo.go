@@ -369,20 +369,18 @@ func contains(s []model.ServiceInfo, name string) bool {
 	return false
 }
 
-func RepoFindService(id int) model.ServiceInfo {
+func RepoFindService(name string) model.ServiceInfo {
 	for _, t := range serviceInfos {
-		if t.Id == id {
+		if t.Name == name {
 			return t
 		}
 	}
 	// return empty Todo if not found
-	return model.ServiceInfo{Id: 0}
+	return model.ServiceInfo{Name: ""}
 }
 
 //this is bad, I don't think it passes race condtions
 func RepoCreateService(t model.ServiceInfo) model.ServiceInfo {
-	serviceCurrentId++
-	t.Id = serviceCurrentId
 	serviceInfos = append(serviceInfos, t)
 	return t
 }
@@ -390,7 +388,7 @@ func RepoCreateService(t model.ServiceInfo) model.ServiceInfo {
 func RepoUpdateService(ci model.ServiceInfo) model.ServiceInfo {
 
 	for _, t := range serviceInfos {
-		if t.Id == ci.Id {
+		if t.Name == ci.Name {
 			t.Name = ci.Name
 			t.Url = ci.Url
 			t.Status = ci.Status
@@ -399,14 +397,14 @@ func RepoUpdateService(ci model.ServiceInfo) model.ServiceInfo {
 	return ci
 }
 
-func RepoDeleteService(id int) error {
+func RepoDeleteService(name string) error {
 	for i, t := range serviceInfos {
-		if t.Id == id {
+		if t.Name == name {
 			serviceInfos = append(serviceInfos[:i], serviceInfos[i+1:]...)
 			return nil
 		}
 	}
-	return fmt.Errorf("Could not find Service with id of %d to delete", id)
+	return fmt.Errorf("Could not find Service with name of %s to delete", name)
 }
 
 //

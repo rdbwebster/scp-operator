@@ -38,13 +38,13 @@ func NewRouter() *mux.Router {
 	// Create
 	router.HandleFunc("/api/service", CreateService).Methods("POST")
 	// Read
-	router.HandleFunc("/api/service/{id}", GetService).Methods("GET")
+	router.HandleFunc("/api/service/{name}", GetService).Methods("GET")
 	// Read-all
 	router.HandleFunc("/api/service", GetServices).Methods("GET")
 	// Update
-	router.HandleFunc("/api/service/{id}", UpdateService).Methods("PUT")
+	router.HandleFunc("/api/service/{name}", UpdateService).Methods("PUT")
 	// Delete
-	router.HandleFunc("/api/service/{id}", DeleteService).Methods("DELETE")
+	router.HandleFunc("/api/service/{name}", DeleteService).Methods("DELETE")
 
 	//
 	// Factory

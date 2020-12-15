@@ -31,12 +31,13 @@ type ManagedOperatorSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of ManagedOperator. Edit ManagedOperator_types.go to remove/update
-	Name             string        `json:"name"`
-	Version          string        `json:"version"`
-	DeploymentName   string        `json:"deploymentname"`
-	ServiceType      string        `json:"servicetype"`
-	ServiceLabel     string        `json:"servicelabel"`
-	DeploymentInputs []SpecUIGroup `json:"deploymentinputs,omitempty"`
+	Name         string        `json:"name"`
+	Version      string        `json:"version"`
+	CrdName      string        `json:"crdname"`
+	ServiceType  string        `json:"servicetype"`
+	ServiceLabel string        `json:"servicelabel"`
+	CRinputs     []SpecUIGroup `json:"crinputs,omitempty"`
+	CRoutputs    []CRentry     `json:"croutputs,omitempty"`
 }
 
 type SpecUIGroup struct {
@@ -46,6 +47,7 @@ type SpecUIGroup struct {
 	Placeholder string     `json:"placeholder"`
 	Options     []Options  `json:"options,omitempty"`
 	Validators  Validators `json:"validators,omitempty"`
+	CRPath      string     `json:"crpath,omitempty"`
 }
 
 type Options struct {
@@ -57,6 +59,13 @@ type Validators struct {
 	Required  bool `json:"required"`
 	Minlength int  `json:"minlength,omitempty"`
 	Maxlength int  `json:"maxlength,omitempty"`
+}
+
+type CRentry struct {
+	ControlName  string `json:"controlname"`
+	ValueType    string `json:"valuetype"`
+	ControlValue string `json:"controlvalue,omitempty"`
+	CRpath       string `json:"crpath"`
 }
 
 // ManagedOperatorStatus defines the observed state of ManagedOperator

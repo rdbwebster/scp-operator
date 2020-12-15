@@ -9,7 +9,7 @@ spec:
   servicelabel: "app=etcd"
   servicetype: "ClusterIP"
   version: "quay.io/coreos/etcd-operator:v0.9.4"
-  deploymentinputs:
+  crinputs:
   - controlName: Name
     controlType: text
     valueType: text
@@ -17,13 +17,36 @@ spec:
     validators:
       required: true
       minlength: 5
+    crpath: metadata.name
   - controlName: Replicas
     placeholder: Number of Pods
-    valueType: text
+    valueType: number
     controlType: text
     validators:
       required: true
       minlength: 1
       maxlength: 3
-
-
+    crpath: spec.size
+  - controlName: Version
+    placeholder: Select DB Version
+    valueType: text
+    controlType: select
+    options:
+      - optionName: 3.1.10
+        value: 3.1.10
+    validators:
+      required: true
+    crpath: spec.version
+  croutputs:
+  - controlName: svcname
+    valueType: text
+    crpath: "status.serviceName"
+  - controlName: svcport
+    valueType: number
+    crpath: "status.clientPort"
+  - controlName: svcsize
+    valueType: number
+    crpath: "status.size"
+  - controlName: svcphase
+    valueType: text
+    crpath: "status.phase"

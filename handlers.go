@@ -3,16 +3,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"log"
-	"net/http"
-	"strconv"
-
 	"github.com/gorilla/mux"
 	"github.com/rdbwebster/scp-operator/kclient"
 	"github.com/rdbwebster/scp-operator/model"
 	"github.com/rdbwebster/scp-operator/stacktrace"
+	"io"
+	"io/ioutil"
+	"log"
+	"net/http"
 	//	api "github.com/rdbwebster/scp-operator/api/v1"
 )
 
@@ -240,16 +238,9 @@ func GetServices(w http.ResponseWriter, r *http.Request) {
 
 func GetService(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	var id int
-	var err error
-	if id, err = strconv.Atoi(vars["id"]); err != nil {
-		st := stacktrace.New(err.Error())
-		log.Printf("%s\n", st)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	serviceInfo := RepoFindService(id)
-	if serviceInfo.Id == 0 {
+
+	serviceInfo := RepoFindService(vars["name"])
+	if serviceInfo.Name == "" {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(serviceInfo); err != nil {
@@ -295,16 +286,10 @@ func CreateService(w http.ResponseWriter, r *http.Request) {
 func DeleteService(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
-	id, err := strconv.Atoi(params["id"])
-	if err != nil {
-		st := stacktrace.New(err.Error())
-		log.Printf("%s\n", st)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	} else {
-		RepoDeleteService(id)
-		w.WriteHeader(http.StatusNoContent)
-	}
+
+	RepoDeleteService(params["name"])
+	w.WriteHeader(http.StatusNoContent)
+
 	return
 }
 

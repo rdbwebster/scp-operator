@@ -9,7 +9,7 @@ spec:
   servicelabel: ""
   servicetype: "ClusterIP"
   version: "postgres-for-kubernetes-v1.0.0"
-  deploymentinputs:
+  crinputs:
   - controlName: DB Name
     controlType: text
     valueType: text
@@ -17,6 +17,7 @@ spec:
     validators:
       required: true
       minlength: 5
+    crpath: spec.Pg.Config.Dbname
   - controlName: DB Username
     controlType: text
     valueType: text
@@ -24,22 +25,26 @@ spec:
     validators:
       required: true
       minlength: 5
+    crpath: spec.Pg.Config.Username
   - controlName: Memory
     placeholder: Enter Memory
-    valueType: text
+    valueType: number
     controlType: text
     validators:
       required: true
       minlength: 7
       maxlength: 10
+    crpath: spec.Memory
   - controlName: CPU
-    valueType: text
+    valueType: number
     placeholder: Enter cpu
-    controlType: text
+    controlType: number
     validators:
       required: true
+    crpath: spec.Cpu
   - controlName: Storage
     placeholder: Select storage
+    valueType: text
     controlType: select
     options:
       - optionName: 100 GB
@@ -48,11 +53,18 @@ spec:
         value: 200GB
     validators:
       required: true
+    crpath: spec.StorageSize
   - controlName: High Availability
     placeholder: High Availability
+    valueType: boolean
     controlType: checkbox
     options:
       - optionName: Enable HA
         value: haenabled
     validators:
       required: true
+    crpath: spec.HighAvailability
+  croutputs:
+  - controlName: High Availability
+    valueType: boolean
+    crpath: "spec.Cpu"

@@ -34,12 +34,18 @@ spec:
         spec:
           description: ManagedOperatorSpec defines the desired state of ManagedOperator
           properties:
-            deploymentinputs:
+            crdname:
+              type: string
+            crinputs:
               items:
                 properties:
                   controlName:
                     type: string
                   controlType:
+                    type: string
+                  crpath:
+                    type: string
+                  currentValue:
                     type: string
                   options:
                     items:
@@ -71,11 +77,51 @@ spec:
                 required:
                 - controlName
                 - controlType
-                - placeholder
                 type: object
               type: array
-            deploymentname:
-              type: string
+            croutputs:
+              items:
+                properties:
+                  controlName:
+                    type: string
+                  controlType:
+                    type: string
+                  crpath:
+                    type: string
+                  currentValue:
+                    type: string
+                  options:
+                    items:
+                      properties:
+                        optionName:
+                          type: string
+                        value:
+                          type: string
+                      required:
+                      - optionName
+                      - value
+                      type: object
+                    type: array
+                  placeholder:
+                    type: string
+                  validators:
+                    properties:
+                      maxlength:
+                        type: integer
+                      minlength:
+                        type: integer
+                      required:
+                        type: boolean
+                    required:
+                    - required
+                    type: object
+                  valueType:
+                    type: string
+                required:
+                - controlName
+                - controlType
+                type: object
+              type: array
             name:
               description: Foo is an example field of ManagedOperator. Edit ManagedOperator_types.go
                 to remove/update
@@ -87,7 +133,7 @@ spec:
             version:
               type: string
           required:
-          - deploymentname
+          - crdname
           - name
           - servicelabel
           - servicetype

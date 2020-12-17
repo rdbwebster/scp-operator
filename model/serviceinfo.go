@@ -1,18 +1,16 @@
 package model
 
-type ServiceInfo struct {
-	Name        string    `json:"name"`
-	Url         string    `json:"url"`
-	Clustername string    `json:"clustername"`
-	Status      string    `json:"status"`
-	CRoutputs   []CRentry `json:"crvalues,omitempty"`
-}
+import (
+	api "github.com/rdbwebster/scp-operator/api/v1"
+)
 
-type CRentry struct {
-	ControlName  string `json:"controlname"`
-	ValueType    string `json:"valuetype"`
-	ControlValue string `json:"controlvalue"`
-	CRpath       string `json:"crpath"`
+type ServiceInfo struct {
+	Name        string        `json:"name"`
+	Crdname     string        `json:"crdname"`
+	Clustername string        `json:"clustername"`
+	Status      string        `json:"status"`
+	CRinputs    []api.CRentry `json:"crinputs"`
+	CRoutputs   []api.CRentry `json:"croutputs"`
 }
 
 type ServiceInfos []ServiceInfo

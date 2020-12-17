@@ -5,10 +5,10 @@ metadata:
 spec:
   # Add fields here
   name: "etcd"
-  deploymentname: "EtcdCluster"
+  crdname: "etcdclusters.etcd.database.coreos.com"
   servicelabel: "app=etcd"
   servicetype: "ClusterIP"
-  version: "quay.io/coreos/etcd-operator:v0.9.4"
+  version: "v0.9.4"
   crinputs:
   - controlName: Name
     controlType: text
@@ -39,14 +39,22 @@ spec:
     crpath: spec.version
   croutputs:
   - controlName: svcname
+    controlType: text
+    currentValue: ""
     valueType: text
     crpath: "status.serviceName"
   - controlName: svcport
+    controlType: text
+    currentValue: ""
     valueType: number
     crpath: "status.clientPort"
   - controlName: svcsize
+    controlType: text
+    currentValue: ""
     valueType: number
     crpath: "status.size"
   - controlName: svcphase
+    controlType: text
+    currentValue: ""
     valueType: text
     crpath: "status.phase"

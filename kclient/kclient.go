@@ -15,9 +15,13 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
-	model "github.com/rdbwebster/scp-operator/model"
+	api "github.com/rdbwebster/scp-operator/api/v1"
+	"github.com/rdbwebster/scp-operator/model"
 	"github.com/rdbwebster/scp-operator/stacktrace"
+	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -227,6 +231,288 @@ func listPods(clientset *kubernetes.Clientset) (int, error) {
 		fmt.Fprintln(os.Stdout, pod.GetName())
 	}
 	return len(pods.Items), err
+}
+
+func GetResource(client dynamic.Interface, gvr schema.GroupVersionResource,
+	name string, namespace string) *unstructured.Unstructured {
+
+	var err error
+	var result *unstructured.Unstructured
+
+	if namespace == "" {
+		result, err = client.Resource(gvr).Get(context.TODO(), name, metav1.GetOptions{})
+	} else {
+		//	result, getErr := client.Resource(gvr).Namespace(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+		result, err = client.Resource(gvr).Namespace(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	}
+
+	if err != nil {
+		panic(fmt.Errorf("failed to get latest version of Custom Resource:name= %s, namespace=%s, gvr= %+v, err= %v",
+			name, namespace, gvr, err))
+	}
+
+	fmt.Printf("Resource= \n %#v", result)
+
+	return result
+}
+
+func GetResourceOutputs(client dynamic.Interface, gvr schema.GroupVersionResource, name string,
+	namespace string, croutputs []api.CRentry) {
+
+	//	unstructuredresource := GetCustomResourceDefinition(client, name)
+
+	unstructuredresource := GetResource(client, gvr, name, namespace)
+	fmt.Printf("\nRetrieved Resource: %+v\n", unstructuredresource)
+
+	for index, entry := range croutputs {
+
+		if strings.HasPrefix(entry.CRpath, "status.") {
+
+			if entry.ValueType == "text" {
+				// Parse out CRD text field
+				resultvalue, found, err := unstructured.NestedString(unstructuredresource.Object, "status",
+					strings.TrimPrefix(entry.CRpath, "status."))
+				if found {
+					fmt.Printf("\nSee Output Value start: %s\n", resultvalue)
+					croutputs[index].CurrentValue = resultvalue
+					fmt.Printf("\nSee Output Value end: %s\n", croutputs[index].CurrentValue)
+				} else {
+					fmt.Printf("\nCannot find Output Value %s, error = %+v", resultvalue, err)
+				}
+
+			} else if entry.ValueType == "number" {
+				// Parse out CRD number field
+
+				resultvalue, found, err := unstructured.NestedInt64(unstructuredresource.Object, "status",
+					strings.TrimPrefix(entry.CRpath, "status."))
+				if found {
+					fmt.Printf("\nSee Output Value: %d\n", resultvalue)
+					croutputs[index].CurrentValue = strconv.FormatInt(resultvalue, 10)
+				} else {
+					fmt.Printf("\nCannot find Output Value %d, error = %+v", resultvalue, err)
+				}
+
+			}
+
+		}
+	}
+
+}
+
+func ListCustomResourceInstances(client dynamic.Interface, gvr schema.GroupVersionResource, namespace string) *unstructured.UnstructuredList {
+
+	// other ways to specifiy fields https://github.com/kubernetes/apimachinery/issues/47
+	// deployments, err := clientset.AppsV1().Deployments("default").List(context.TODO(), metav1.ListOptions{FieldSelector: "metadata.name=scp-rest-svr"})
+
+	results, err := client.Resource(gvr).Namespace(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		panic(err.Error())
+	}
+
+	fmt.Printf("There are %d CRs of type %s\n", len(results.Items), gvr.Resource)
+	fmt.Printf("See type of: %T\n", results)
+
+	return results
+}
+
+func Between(value string, a string, b string) string {
+	// Get substring between two strings.
+	posFirst := strings.Index(value, a)
+	if posFirst == -1 {
+		return ""
+	}
+	posLast := strings.Index(value, b)
+	if posLast == -1 {
+		return ""
+	}
+	posFirstAdjusted := posFirst + len(a)
+	if posFirstAdjusted >= posLast {
+		return ""
+	}
+	return value[posFirstAdjusted:posLast]
+}
+
+func Before(value string, a string) string {
+	// Get substring before a string.
+	pos := strings.Index(value, a)
+	if pos == -1 {
+		return ""
+	}
+	return value[0:pos]
+}
+
+func After(value string, a string) string {
+	// Get substring after a string.
+	pos := strings.LastIndex(value, a)
+	if pos == -1 {
+		return ""
+	}
+	adjustedPos := pos + len(a)
+	if adjustedPos >= len(value) {
+		return ""
+	}
+	return value[adjustedPos:len(value)]
+}
+
+func GetGrv(client dynamic.Interface, crdresource *unstructured.Unstructured) schema.GroupVersionResource {
+
+	// Parse out group
+	group, found, err := unstructured.NestedString(crdresource.Object, "apiVersion")
+	group = Before(group, "/")
+	if found {
+		fmt.Printf("See Group: %s\n", group)
+	} else {
+		panic(err)
+	}
+
+	// Parse out CRD kind plural
+	plural, found, err := unstructured.NestedString(crdresource.Object, "spec", "names", "plural")
+	if found {
+		fmt.Printf("See Kind Plural: %s\n", plural)
+	} else {
+		panic(err)
+	}
+
+	// Parse out api/version
+	version, found, err := unstructured.NestedString(crdresource.Object, "apiVersion")
+	version = After(version, "/")
+	if found {
+		fmt.Printf("See Version: %s\n", version)
+	} else {
+		panic(err)
+	}
+
+	return schema.GroupVersionResource{Group: group, Version: version, Resource: plural}
+
+}
+
+func GetCrdGrv(client dynamic.Interface, crdresource *unstructured.Unstructured) schema.GroupVersionResource {
+
+	// Parse out to confirm CRD name
+	name, found, err := unstructured.NestedString(crdresource.Object, "metadata", "name")
+	if found {
+		fmt.Printf("\nSee cr name in crd: %s\n", name)
+	}
+
+	// Parse out CRD group
+	group, found, err := unstructured.NestedString(crdresource.Object, "spec", "group")
+	if found {
+		fmt.Printf("See cr Group: %s\n", group)
+	}
+
+	// Parse out CRD kind plural
+	plural, found, err := unstructured.NestedString(crdresource.Object, "spec", "names", "plural")
+	if found {
+		fmt.Printf("See Kind Plural: %s\n", plural)
+	}
+
+	// Parse out CRD version
+	// https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1/unstructured
+	versions, found, err := unstructured.NestedSlice(crdresource.Object, "spec", "versions")
+	if found {
+		fmt.Printf("See Versions: %s of type %T\n", versions, versions)
+	} else {
+		fmt.Printf("Cannot find version %+v", err)
+	}
+
+	// Must cast
+	// https://github.com/kubernetes/client-go/blob/master/examples/dynamic-create-update-delete-deployment/main.go
+	foo := versions[0].(map[string]interface{})
+	fmt.Printf("See foo type of: %T\n", foo)
+
+	version, found, err := unstructured.NestedString(foo, "name")
+	if found {
+		fmt.Printf("See Version: %s of type %T\n", version, version)
+	} else {
+		fmt.Printf("Cannot find name %+v", err)
+	}
+
+	return schema.GroupVersionResource{Group: group, Version: version, Resource: plural}
+
+}
+
+func CreateCustomResourceSetParms(client dynamic.Interface, name string, gvr schema.GroupVersionResource,
+	kind string, values model.ServiceInfo) {
+
+	//	crGvr := schema.GroupVersionResource{Group: group, Version: version, Resource: plural}
+
+	gv := gvr.Group + "/" + gvr.Version
+
+	cr := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": gv,
+			"kind":       kind,
+			"metadata": map[string]interface{}{
+				"name": name,
+			},
+			"spec": map[string]interface{}{
+				//		"size": 2,
+				//		"version": "3.1.10",
+			},
+		},
+	}
+
+	// add entries
+	for _, entry := range values.CRinputs {
+
+		if strings.HasPrefix(entry.CRpath, "spec.") {
+			if entry.ValueType == "text" {
+
+				err := unstructured.SetNestedField(cr.Object, entry.CurrentValue, "spec",
+					strings.TrimPrefix(entry.CRpath, "spec."))
+				if err != nil {
+					fmt.Printf("\n Cannot set Value: %s, error = %+v \n", entry.CRpath, err)
+				}
+			} else if entry.ValueType == "number" {
+				// Parse out CRD number field
+
+				value, err := strconv.ParseInt(entry.CurrentValue, 10, 64)
+				if err != nil {
+					panic(err)
+				}
+				err = unstructured.SetNestedField(cr.Object, value, "spec",
+					strings.TrimPrefix(entry.CRpath, "spec."))
+				if err != nil {
+					fmt.Printf("\n Cannot set Value %s, error = %+v \n", entry.CRpath, err)
+				}
+			}
+		}
+	}
+
+	// set the spec updated spec field
+	//	if err := unstructured.SetNestedField(result.Object, containers, "spec", "template", "spec", "containers"); err != nil {
+	//		panic(err)
+	//	}
+
+	// Create Deployment
+	fmt.Printf("Creating %s resource...", kind)
+	result, err := client.Resource(gvr).Namespace("default").Create(context.TODO(), cr, metav1.CreateOptions{})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Created deployment %q.\n", result.GetName())
+	fmt.Printf("Unstructured \n %+v \n", cr.Object)
+	y, err := yaml.Marshal(cr.Object)
+	if err != nil {
+		fmt.Printf("Marshal: %v", err)
+	}
+
+	fmt.Println(string(y))
+
+}
+
+func GetCustomResourceDefinition(client dynamic.Interface, name string) *unstructured.Unstructured {
+
+	gvr := schema.GroupVersionResource{Group: "apiextensions.k8s.io", Version: "v1", Resource: "customresourcedefinitions"}
+
+	//	result, getErr := client.Resource(gvr).Namespace(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	result, getErr := client.Resource(gvr).Get(context.TODO(), name, metav1.GetOptions{})
+
+	if getErr != nil {
+		panic(fmt.Errorf("failed to get latest version of Custom Resource Definition: %v", getErr))
+	}
+
+	return result
 }
 
 func getPodObject() *v1.Pod {

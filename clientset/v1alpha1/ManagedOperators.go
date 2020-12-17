@@ -2,7 +2,7 @@ package v1alpha1
 
 import (
 	"context"
-	"fmt"
+
 	v1 "github.com/rdbwebster/scp-operator/api/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -34,7 +34,7 @@ func (c *ManagedOperatorClient) List(opts metav1.ListOptions) (*v1.ManagedOperat
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Do(context.TODO()).
 		Into(&result)
-	fmt.Printf("Here %+v", result)
+		//	fmt.Printf("Here %+v", result)
 	return &result, err
 }
 

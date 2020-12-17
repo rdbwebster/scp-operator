@@ -8,6 +8,7 @@ import (
 
 	api "github.com/rdbwebster/scp-operator/api/v1"
 	clientV1alpha1 "github.com/rdbwebster/scp-operator/clientset/v1alpha1"
+	"github.com/rdbwebster/scp-operator/kclient"
 	"github.com/rdbwebster/scp-operator/model"
 	"github.com/rdbwebster/scp-operator/stacktrace"
 	v1 "k8s.io/api/apps/v1"
@@ -152,8 +153,8 @@ func init() {
 		CertAuth:  certAuth}})
 	//	RepoCreateCluster(model.ClusterInfo{Name: "Cluster Two", NAmespace: "default", Url: "192.168.0.42", Token: "", Cert: "", CertAuth: ""})
 
-	RepoCreateService(model.ServiceInfo{Name: "Postgres db1", Url: "192.168.0.42", Clustername: "", Status: "Active"})
-	RepoCreateService(model.ServiceInfo{Name: "Postgres db2", Url: "192.168.64.4:8443", Clustername: "cluster1", Status: "Active"})
+	RepoCreateMockService(model.ServiceInfo{Name: "Postgres db1", Crdname: "postgres.sql.tanzu.vmware.com", Clustername: "", Status: "Active"})
+	RepoCreateMockService(model.ServiceInfo{Name: "Postgres db2", Crdname: "postgres.sql.tanzu.vmware.com", Clustername: "cluster1", Status: "Active"})
 
 	//	RepoCreateFactory(model.FactoryInfo{Name: "etcd", Version: "1", Deploymentname: "etcd", Clustername: "LOCAL"})
 
@@ -321,43 +322,101 @@ func RepoDeleteCluster(clustername string) error {
 
 func RepoGetServices() error {
 
-	// For demo need to fudge data
+	// reset cached service infos
+	serviceInfos = nil
 
-	/*
-	   	// *v1.ManagedOperatorList
-	   	factoryList, err := clusterClient.ManagedOperator("default").List(metav1.ListOptions{})
-	   	fmt.Printf("Here also %+v", factoryList)
-	   	if err != nil {
-	   		st := stacktrace.New(err.Error())
-	   		log.Printf("%s\n", st)
-	   		fmt.Printf("Error retrieving factories %+v \n", st)
-	   		return err
-	   	}
+	// replace mock entries
+	RepoCreateMockService(model.ServiceInfo{Name: "Postgres db1", Crdname: "postgres.sql.tanzu.vmware.com", Clustername: "LOCAL", Status: "Active"})
+	RepoCreateMockService(model.ServiceInfo{Name: "Postgres db2", Crdname: "postgres.sql.tanzu.vmware.com", Clustername: "cluster1", Status: "Active"})
 
-	   	// reset cached service infos
-	   	serviceInfos = nil
+	// Get list of Managed Operators
+	// *v1.ManagedOperatorList
+	factoryList, err := clusterClient.ManagedOperator("default").List(metav1.ListOptions{})
+	if err != nil {
+		st := stacktrace.New(err.Error())
+		log.Printf("%s\n", st)
+		fmt.Printf("Error retrieving factories %+v \n", st)
+		return err
+	}
 
-	       // get service for each managed operator using app label
-	   	for _, f := range factoryList.Items {
-	   		services, err := GetServicesByLabel("default", f.Spec.ServiceLabel)
-	   		if err != nil {
-	   			st := stacktrace.New(err.Error())
-	   			log.Printf("%s\n", st)
-	   			fmt.Printf("Error retrieving services %+v \n", st)
-	   			return err
-	   		 }
-	   		 for _, s := range services.Items {
-	   			 if !contains(serviceInfos, s.Name) {
-	   				serviceInfos = append(serviceInfos,
-	   							model.ServiceInfo{Name: s.Name, Url: "", Clustername: "LOCAL", Status: "Available"})
-	   			}
+	// get instances of each managed operator
+	for _, f := range factoryList.Items {
 
-	   		 }
-	   	}
-	*/
+		// get the crd
+		var crdresource = kclient.GetCustomResourceDefinition(dynamicClient, f.Spec.CrdName)
+
+		// Get gvr for CRD Type
+		crdgvr := kclient.GetCrdGrv(dynamicClient, crdresource)
+
+		// get a list of those crs by crd type
+		// *unstructured.UnstructuredList
+		crinstances := kclient.ListCustomResourceInstances(dynamicClient, crdgvr, "default")
+
+		// for each cr instance
+		for _, cri := range crinstances.Items {
+
+			fmt.Printf("cri %+v \n", cri)
+
+			// Parse out CR name
+			name, found, err := unstructured.NestedString(cri.Object, "metadata", "name")
+			if found {
+				fmt.Printf("\nSee Name: %s\n", name)
+			} else if err != nil {
+				st := stacktrace.New(err.Error())
+				log.Printf("%s\n", st)
+				fmt.Printf("Error retrieving services %+v \n", st)
+			}
+
+			// create new svc info
+			newsvcinfo := model.ServiceInfo{Name: name, Crdname: "localhost",
+				Clustername: "LOCAL", Status: ""}
+
+			// copy in croutputs from managed op spec to new svcinfo
+			entries := make([]api.CRentry, 0)
+
+			fmt.Printf("length of croutputs  %d \n", len(f.Spec.CRoutputs))
+
+			for _, oentry := range f.Spec.CRoutputs {
+				newentry := api.CRentry{ControlName: oentry.ControlName, ControlType: oentry.ControlType,
+					CurrentValue: "", ValueType: oentry.ValueType, CRpath: oentry.CRpath}
+				entries = append(entries, newentry)
+			}
+			newsvcinfo.CRoutputs = entries
+
+			fmt.Printf("ready with newsvcinfo %+v \n", newsvcinfo)
+
+			// get interesting fields from cr, updating output values in servinceinfo
+			kclient.GetResourceOutputs(dynamicClient, crdgvr, name,
+				"default", newsvcinfo.CRoutputs)
+
+			fmt.Printf("\nCRoutputs = %+v\n", newsvcinfo.CRoutputs)
+
+			// add new entry to svcinfos cache
+			serviceInfos = append(serviceInfos, newsvcinfo)
+		}
+	}
+
 	return nil
-
 }
+
+/*
+	// get service for each managed operator using app label
+	for _, f := range factoryList.Items {
+		services, err := GetServicesByLabel("default", f.Spec.ServiceLabel)
+		if err != nil {
+			st := stacktrace.New(err.Error())
+			log.Printf("%s\n", st)
+			fmt.Printf("Error retrieving services %+v \n", st)
+			return err
+			}
+			for _, s := range services.Items {
+				if !contains(serviceInfos, s.Name) {
+				serviceInfos = append(serviceInfos,
+							model.ServiceInfo{Name: s.Name, Url: "", Clustername: "LOCAL", Status: "Available"})
+			}
+
+			}
+	}*/
 
 func contains(s []model.ServiceInfo, name string) bool {
 	for _, v := range s {
@@ -379,10 +438,35 @@ func RepoFindService(name string) model.ServiceInfo {
 	return model.ServiceInfo{Name: ""}
 }
 
-//this is bad, I don't think it passes race condtions
-func RepoCreateService(t model.ServiceInfo) model.ServiceInfo {
-	serviceInfos = append(serviceInfos, t)
-	return t
+func RepoCreateMockService(serv model.ServiceInfo) {
+	serviceInfos = append(serviceInfos, serv)
+}
+
+func RepoCreateService(serv model.ServiceInfo) model.ServiceInfo {
+
+	// Read Custom Resource Definition by name
+	// *unstructured.Unstructured
+	var crdresource = kclient.GetCustomResourceDefinition(dynamicClient, serv.Crdname)
+
+	// Get gvr for CR Type
+	gvr := kclient.GetCrdGrv(dynamicClient, crdresource)
+
+	// Parse out CRD kind
+	kind, found, err := unstructured.NestedString(crdresource.Object, "spec", "names", "kind")
+	if found {
+		fmt.Printf("See Kind : %s\n", kind)
+	} else {
+		st := stacktrace.New(err.Error())
+		log.Printf("%s\n", st)
+		fmt.Printf("Error creating clusters %+v \n", st)
+	}
+	fmt.Printf("See crdresource.Object type of: %T\n", crdresource.Object)
+
+	// Create a custom new resource with these values
+	kclient.CreateCustomResourceSetParms(dynamicClient, serv.Name, gvr, kind, serv)
+
+	serviceInfos = append(serviceInfos, serv)
+	return serv
 }
 
 func RepoUpdateService(ci model.ServiceInfo) model.ServiceInfo {
@@ -390,7 +474,7 @@ func RepoUpdateService(ci model.ServiceInfo) model.ServiceInfo {
 	for _, t := range serviceInfos {
 		if t.Name == ci.Name {
 			t.Name = ci.Name
-			t.Url = ci.Url
+			t.Crdname = ci.Crdname
 			t.Status = ci.Status
 		}
 	}
@@ -415,7 +499,6 @@ func RepoGetFactories() error {
 
 	// *v1.ManagedOperatorList
 	factoryList, err := clusterClient.ManagedOperator("default").List(metav1.ListOptions{})
-	fmt.Printf("Here also %+v", factoryList)
 	if err != nil {
 		st := stacktrace.New(err.Error())
 		log.Printf("%s\n", st)

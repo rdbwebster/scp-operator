@@ -5,7 +5,7 @@ metadata:
 spec:
   # Add fields here
   name: "etcd"
-  deploymentname: "etcd-operator"
+  crdname: "etcd-operator"
   servicelabel: "app=etcd"
   servicetype: "ClusterIP"
   version: "quay.io/coreos/etcd-operator:v0.9.4"

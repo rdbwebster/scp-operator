@@ -5,10 +5,10 @@ metadata:
 spec:
   # Add fields here
   name: "postgres"
-  deploymentname: "Postgres"
+  crdname: "postgres.sql.tanzu.vmware.com"
   servicelabel: ""
   servicetype: "ClusterIP"
-  version: "postgres-for-kubernetes-v1.0.0"
+  version: "v1.0.0"
   crinputs:
   - controlName: DB Name
     controlType: text
@@ -65,6 +65,8 @@ spec:
       required: true
     crpath: spec.HighAvailability
   croutputs:
-  - controlName: High Availability
-    valueType: boolean
-    crpath: "spec.Cpu"
+  - controlName: Status
+    controlType: text
+    currentValue: ""
+    valueType: text
+    crpath: "status.phase"  

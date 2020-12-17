@@ -114,7 +114,7 @@ curl --header "Content-Type: application/json" http://localhost:8080/api/factory
 
 curl --header "Content-Type: application/json" \
   --request POST \
-  --data '{ "name":"pgsql", "version":"1", "deploymentname": "etcd", "servicelabel": "app:etc"}' \
+  --data '{ "name":"pgsql", "version":"1", "crdname": "etcd", "servicelabel": "app:etc"}' \
   http://localhost:8080/api/factory
 
 // UPDATE

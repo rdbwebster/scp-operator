@@ -1,0 +1,15 @@
+apiVersion: sql.tanzu.vmware.com/v1
+kind: PostgresInstance
+metadata:
+  name: my-postgres 
+spec:
+  memory: 800Mi 
+  cpu: "0.8"   
+  storageClassName: standard   
+  storageSize: 100M   
+  pgConfig:
+    dbname: testdb     
+    username: pgadmin
+  serviceType: LoadBalancer 
+  highAvailability:
+    Enabled: True

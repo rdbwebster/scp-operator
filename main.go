@@ -11,7 +11,7 @@ import (
 var kubeconfig string
 
 func init() {
-	flag.StringVar(&kubeconfig, "kubeconfig", "/Users/bwebster/.kube/config", "Path to kubeconfig")
+	flag.StringVar(&kubeconfig, "kubeconfig", "./.kube/config", "Path to kubeconfig")
 	flag.Parse()
 }
 

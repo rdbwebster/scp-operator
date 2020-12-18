@@ -1,0 +1,8 @@
+FROM photon:latest
+RUN tdnf -y install git
+RUN tdnf -y install go 
+RUN tdnf -y install bindutils
+RUN tdnf -y vim
+RUN yum -y iputils
+RUN go get -d -v github.com/gorilla/mux
+CMD [" tail -f /dev/null"]

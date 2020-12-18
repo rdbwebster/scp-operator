@@ -9,7 +9,7 @@ for the Clarity POC UI
 
 
 
-#### Running the example
+#### Running the example on mac (must have golang)
 
 To run this example, from the root of this project:
 
